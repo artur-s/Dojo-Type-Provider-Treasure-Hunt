@@ -16,8 +16,12 @@ let wb = WorldBankData.GetDataContext()
 // Get specific indicator for a specific country at a given year
 wb.Countries.``Czech Republic``.Indicators.``Population (Total)``.[2000]
 // Get a list of countries in a specified region
-wb.Regions.``Euro area``.Countries
-
+let word1 = wb.Regions.``North America``.Countries 
+            |> Seq.minBy (fun c -> c.Indicators.``Life expectancy at birth, total (years)``.GetValueAtOrZero 2000)
+            |> (fun c -> c.Code)
+            |> Seq.take 2 
+            |> Seq.fold (fun acc c -> acc + string c) ""
+    
 
 // ------------------------------------------------------------------
 // WORD #2
@@ -28,10 +32,11 @@ wb.Regions.``Euro area``.Countries
 // ------------------------------------------------------------------
 
 // Create a type for working with XML documents based on a sample file
-type Sample = XmlProvider<"data/Writers.xml">
+type Sample = XmlProvider<"data/bbc.xml">
 // Load the sample document - explore properties using "doc."
 let doc = Sample.GetSample()
-
+let item = doc.Channel.GetItems() |> Seq.tryFind ( fun i -> i.PubDate.Hour = 9 && i.PubDate.Minute = 5)
+let word2 = item.Value.Title.Split ' ' |> Seq.last
 
 // ------------------------------------------------------------------
 // WORD #3
@@ -46,27 +51,51 @@ let doc = Sample.GetSample()
 // Using The MovieDB REST API
 // Make HTTP request to /3/search/person
 let key = "6ce0ef5b176501f8c07c634dfa933cff"
-let name = "craig"
-let data = 
+let name = "Haugerud"
+let searchResponse = 
   Http.Request
     ( "http://api.themoviedb.org/3/search/person",
-      query = [ ("query", "craig"); ("api_key", key) ],
+      query = [ ("query", name); ("api_key", key) ],
       headers = ["accept", "application/json"] )
+
+let data = 
+        searchResponse.Body 
+        |> function 
+            | ResponseBody.Text t-> t
+            | _ -> failwith "the response body should be a text"
 
 // Parse result using JSON provider
 // (using sample result to generate types)
 type PersonSearch = JsonProvider<"data/personsearch.json">
-let sample = PersonSearch.Parse(data)
+let personSearch = PersonSearch.Parse(data)
 
-let first = sample.Results |> Seq.head
-first.Name
+let first = personSearch.Results |> Seq.head
+//first.Id //first.Name
 
 // Request URL: "http://api.themoviedb.org/3/person/<id>/movie_credits
 // (You can remove the 'query' parameter because it is not needed here;
 // you need to put the director's ID in place of the <id> part of the URL)
 
 // Use JsonProvider with sample file "data/moviecredits.json" to parse
+let creditsResponse = 
+    Http.Request
+        ( sprintf "http://api.themoviedb.org/3/person/%d/movie_credits" first.Id,
+          query = [("api_key", key) ],
+          headers = ["accept", "application/json"] )
 
+let creditsResponseBody = 
+        creditsResponse.Body
+        |> function
+            | ResponseBody.Text t -> t
+            | _ -> failwith "the response body should be a text"
+
+type MovieCredits = JsonProvider<"data/moviecredits.json">
+let creditsSearch = MovieCredits.Parse(creditsResponseBody)
+
+let movie = creditsSearch.Crew |> Seq.filter (fun c -> c.Job = "Director") |> Seq.head
+let word3 = movie.Title.Split ' ' |> Seq.last
+
+[word1;word2;word3]
 
 // ------------------------------------------------------------------
 // WORD #4

@@ -1,6 +1,9 @@
 ﻿#r "System.Xml.Linq.dll"
 #r "packages/FSharp.Data.2.0.0-alpha6/lib/net40/FSharp.Data.dll"
 open FSharp.Data
+open System
+
+let toString (cs:seq<char>) = String(cs |> Seq.toArray)
 
 // ------------------------------------------------------------------
 // WORD #1
@@ -20,7 +23,7 @@ let word1 = wb.Regions.``North America``.Countries
             |> Seq.minBy (fun c -> c.Indicators.``Life expectancy at birth, total (years)``.GetValueAtOrZero 2000)
             |> (fun c -> c.Code)
             |> Seq.take 2 
-            |> Seq.fold (fun acc c -> acc + string c) ""
+            |> toString
     
 
 // ------------------------------------------------------------------
@@ -95,7 +98,6 @@ let creditsSearch = MovieCredits.Parse(creditsResponseBody)
 let movie = creditsSearch.Crew |> Seq.filter (fun c -> c.Job = "Director") |> Seq.head
 let word3 = movie.Title.Split ' ' |> Seq.last
 
-[word1;word2;word3]
 
 // ------------------------------------------------------------------
 // WORD #4
@@ -110,11 +112,18 @@ let word3 = movie.Title.Split ' ' |> Seq.last
 // by underscores). Make the word plural by adding 's' to the end.
 // ------------------------------------------------------------------
 
-// Demo - using CSV provider to read CSV file with custom separator
-type Lib = CsvProvider<"data/mortalityny.tsv", Separator="\t">
-// Read the sample file - explore the collection of rows in "lib.Data"
-let lib = new Lib()
+type Calls = CsvProvider<"data/librarycalls.csv", Separators=";">
+let calls = new Calls()
+let foundRow = calls.Rows 
+                |> Seq.find (fun r -> r.``params`` = 2 && r.count = 1 && r.name.Length > 6)
+let word4 = (foundRow.name.Split '_' |> Seq.last) + "s"
 
+//
+//// Demo - using CSV provider to read CSV file with custom separator
+//type Lib = CsvProvider<"data/mortalityny.tsv", Separators="\t">
+//// Read the sample file - explore the collection of rows in "lib.Data"
+//let lib = new Lib()
+//lib.Rows |> Seq.take 30 |> Seq.toList
 
 // ------------------------------------------------------------------
 // WORD #5
@@ -130,10 +139,14 @@ let fb = FreebaseData.GetDataContext()
 
 // Query stars in the science & technology category
 // (You'll need "Science and Technology" and then "Chemistry")
-query { for e in fb.``Science and Technology``.Astronomy.Stars do 
-        where e.Distance.HasValue
-        select (e.Name, e.Distance) } 
-|> Seq.toList
+let word5 = 
+    query { for e in fb.``Science and Technology``.Chemistry.``Chemical Elements`` do 
+            where (e.``Atomic number``.GetValueOrDefault() = 36)
+            select e.Name } 
+    |> Seq.head 
+    |> Seq.skip 4 |> Seq.take 2
+    |> toString
+
 
 // ------------------------------------------------------------------
 // WORD #6
@@ -145,6 +158,11 @@ query { for e in fb.``Science and Technology``.Astronomy.Stars do
 // ------------------------------------------------------------------
 
 // Use CsvProvider with the "data/titanic.csv" file as a sample
+type TitanicData = CsvProvider<"data/Titanic.csv">
+let titanic = new TitanicData()
+//[for r in titanic.Rows -> (r.Age, r.Embarked)]
+let word6 = (titanic.Rows
+            |> Seq.find (fun r -> r.Age = 19. && r.Embarked = "Q")).Name.Substring(19,3)
 
 
 // ------------------------------------------------------------------
@@ -157,3 +175,5 @@ query { for e in fb.``Science and Technology``.Astronomy.Stars do
 // ------------------------------------------------------------------
 
 // (...)
+
+[word1;word2;word3;word4;word5;word6]

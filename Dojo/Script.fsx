@@ -162,8 +162,9 @@ type TitanicData = CsvProvider<"data/Titanic.csv">
 let titanic = new TitanicData()
 //[for r in titanic.Rows -> (r.Age, r.Embarked)]
 let word6 = (titanic.Rows
-            |> Seq.find (fun r -> r.Age = 19. && r.Embarked = "Q")).Name.Substring(19,3)
-
+            |> Seq.tryFind (fun r -> r.Age = 19. && r.Embarked = "Q"))
+            |> Option.map (fun r -> r.Name.Substring(19,3))
+            |> Option.get
 
 // ------------------------------------------------------------------
 // WORD #7
@@ -174,6 +175,18 @@ let word6 = (titanic.Rows
 // as the separator and get item at index 13).
 // ------------------------------------------------------------------
 
-// (...)
+type Sample2 = XmlProvider<"data/bbc.xml">
+let bbc = Sample2.GetSample()
+let word7 = 
+    query { for ch in bbc.Channel.GetItems() do
+            where (ch.Title.Contains("Duran Duran"))
+            select (ch.Description.Split(' ').[13]) }
+    |> Seq.head
 
-[word1;word2;word3;word4;word5;word6]
+
+
+
+[word1;word2;word3;word4;word5;word6;word7]
+
+
+// All your types are belong to us
